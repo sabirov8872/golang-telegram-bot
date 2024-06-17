@@ -1,41 +1,73 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"math/rand"
-	"strconv"
+	"io"
+	"log"
+	"net/http"
 )
+
+type DealerExist []string
+
+// Option - Options for modification
+type Option struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	ImageSha    string `json:"imagesha"`
+}
+
+// Modification - Car modifications
+type Modification struct {
+	ModificationID string   `json:"modification_id"`
+	Name           string   `json:"name"`
+	Producing      string   `json:"producing"`
+	Price          string   `json:"price"`
+	Options        []string `json:"options"`
+	OptionsObj     []Option `json:"options_obj"`
+	Colors         []Color  `json:"colors"`
+}
+
+// StockData - Stock information for each region
+type StockData struct {
+	RegionID string `json:"region_id"`
+	Stock    string `json:"stock"`
+}
+
+// Color - Color options for the car
+type Color struct {
+	ColorID     string      `json:"color_id"`
+	Name        string      `json:"name"`
+	HexValue    string      `json:"hex_value"`
+	QueueNo     string      `json:"queue_no"`
+	ExpectDate  string      `json:"expect_date"`
+	PhotoSha    string      `json:"photo_sha"`
+	StockData   []StockData `json:"stock_data"`
+	PhotoSha666 string      `json:"photo_sha666"`
+}
+
+// CarModel - Main model structure
+type CarModel struct {
+	ModelID       string         `json:"model_id"`
+	Name          string         `json:"name"`
+	PhotoSha      string         `json:"photo_sha"`
+	DealerExist   DealerExist    `json:"dealer_exist"`
+	Modifications []Modification `json:"modifications"`
+	As666         int            `json:"as666"`
+	PhotoSha666   string         `json:"photo_sha666"`
+}
+
+// So'rov uchun struktura
+type RequestData struct {
+	IsWeb    string `json:"is_web"`
+	FilialID int    `json:"filial_id"`
+}
 
 const BotToken = "7368281324:AAGEPlq6znDSXDkEJ-penPuq4nKTfX5RJRg"
 
 var bot *tgbotapi.BotAPI
-var symbols = [5]string{"+", "-", "*", "/", "%"}
-
-func questions() (string, string) {
-	symbol := rand.Intn(len(symbols))
-	rnd1 := rand.Intn(21)
-	rnd2 := rand.Intn(21)
-	sum := 0
-
-	if rnd2 == 0 {
-		rnd2++
-	}
-
-	if symbols[symbol] == "+" {
-		sum = rnd1 + rnd2
-	} else if symbols[symbol] == "-" {
-		sum = rnd1 - rnd2
-	} else if symbols[symbol] == "*" {
-		sum = rnd1 * rnd2
-	} else if symbols[symbol] == "/" {
-		sum = rnd1 / rnd2
-	} else {
-		sum = rnd1 % rnd2
-	}
-
-	return strconv.Itoa(rnd1) + " " + symbols[symbol] + " " + strconv.Itoa(rnd2) + " = ?", strconv.Itoa(sum)
-}
 
 func sendMessage(chatID int64, msg string) {
 	msgConfig := tgbotapi.NewMessage(chatID, msg)
@@ -49,12 +81,12 @@ func main() {
 	updateConfig := tgbotapi.NewUpdate(0)
 	updates := bot.GetUpdatesChan(updateConfig)
 
-	isStart := false
-	cnt := 0
-	isQuestion := false
-	isTrueQuestion := false
-	rightAnswer := 0
-	var answer, question string
+	//isStart := false
+	//cnt := 0
+	//isQuestion := false
+	//isTrueQuestion := false
+	//rightAnswer := 0
+	//var answer, question string
 
 	for update := range updates {
 		if update.Message == nil {
@@ -63,45 +95,62 @@ func main() {
 
 		chatId := update.Message.Chat.ID
 
-		if isTrueQuestion {
-			natija := ""
+		if update.Message.Text == "/start" {
+			// URL manzilini aniqlash
+			url := "https://savdo.uzavtosanoat.uz/t/ap/stream/ph&models"
 
-			if update.Message.Text == answer {
-				natija = "to'g'ri ✅"
-				rightAnswer++
-			} else {
-				natija = "noto'g'ri ❌\nTo'g'ri javob✅:  " + answer
+			// So'rov ma'lumotlarini tayyorlash
+			requestData := RequestData{
+				IsWeb:    "Y",
+				FilialID: 100,
 			}
 
-			sendMessage(chatId, "Javob "+natija)
-			isTrueQuestion = false
-		}
+			// Ma'lumotlarni JSON formatiga o'tkazish
+			jsonData, err := json.Marshal(requestData)
+			if err != nil {
+				log.Fatalf("Error marshalling JSON: %v", err)
+			}
 
-		if cnt == 10 {
-			sendMessage(chatId, "To'gri javoblar✅:  "+strconv.Itoa(rightAnswer)+"\nNoto'gri javoblar❌:  "+strconv.Itoa(10-rightAnswer))
-			sendMessage(chatId, "Sizga hisoblashga oid 10 ta savol beriladi va oxirida sizning natijangiz aytiladi.\n\n/ - sonning butun qismini oling\n% - sonning qoldiq qismini oling\n\nMasalan:\n7 / 3 = 2\n7 % 3 = 1\n\nBoshlash uchun boshlashni ustidan bosing.\n👉  /boshlash  👈")
-			isStart = false
-			cnt = 0
-			isQuestion = false
-			isTrueQuestion = false
-			rightAnswer = 0
-		}
+			// HTTP POST so'rovini tayyorlash
+			req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+			if err != nil {
+				log.Fatalf("Error creating request: %v", err)
+			}
 
-		if !isQuestion && update.Message.Text == "/boshlash" {
-			isStart = true
-			isQuestion = true
-		}
+			// Header qo'shish
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("rcode", "SuiQuAy4qEkJhv51JS0n8jW1KeGxaxnr")
 
-		if !isTrueQuestion && isQuestion {
-			cnt++
-			question, answer = questions()
-			sendMessage(chatId, strconv.Itoa(cnt)+" - savol:\n"+question)
-			isTrueQuestion = true
-		}
+			// So'rovni amalga oshirish
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			if err != nil {
+				log.Fatalf("Error sending request: %v", err)
+			}
+			defer resp.Body.Close()
 
-		if !isStart && update.Message.Text == "/start" {
-			sendMessage(chatId, "Salom "+update.Message.From.FirstName+". Mening ismim my_bot. Men hozircha sizga hisoblashga oid savollar bera olaman!!")
-			sendMessage(chatId, "Sizga hisoblashga oid 10 ta savol beriladi va oxirida sizning natijangiz aytiladi.\n\n/ - sonning butun qismini oling\n% - sonning qoldiq qismini oling\n\nMasalan:\n7 / 3 = 2\n7 % 3 = 1\n\nBoshlash uchun boshlashni ustidan bosing.\n👉  /boshlash  👈")
+			// Javobni o'qish
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				log.Fatalf("Error reading response body: %v", err)
+			}
+
+			var carModelList []CarModel
+
+			if err := json.Unmarshal(body, &list); err != nil {
+				log.Fatalf("Error unmarshalling JSON: %v", err)
+			}
+
+			// Javobni chiqarish
+			//fmt.Println("Response Status:", resp.Status)
+			msg := ""
+
+			for _, carModel := range carModelList {
+				//fmt.Printf("Model ID: %s, Name: %s\n", carModel.ModelID, carModel.Name)
+				msg += carModel.Name + "\n"
+			}
+
+			sendMessage(chatId, msg)
 		}
 	}
 }
