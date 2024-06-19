@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/joho/godotenv"
 	"io"
 	"log"
 	"net/http"
+	"os"
 )
 
 type DealerExist []string
@@ -65,8 +67,6 @@ type RequestData struct {
 	FilialID int    `json:"filial_id"`
 }
 
-const BotToken = "7368281324:AAGEPlq6znDSXDkEJ-penPuq4nKTfX5RJRg"
-
 var bot *tgbotapi.BotAPI
 
 func sendMessage(chatID int64, msg string) {
@@ -75,18 +75,15 @@ func sendMessage(chatID int64, msg string) {
 }
 
 func main() {
-	bot, _ = tgbotapi.NewBotAPI(BotToken)
-	fmt.Println("Bot ishlayapti!!")
+	// .env faylidan tokenni o'qib olish
+	godotenv.Load()
+	token := os.Getenv("botToken")
 
-	updateConfig := tgbotapi.NewUpdate(0)
-	updates := bot.GetUpdatesChan(updateConfig)
-
-	//isStart := false
-	//cnt := 0
-	//isQuestion := false
-	//isTrueQuestion := false
-	//rightAnswer := 0
-	//var answer, question string
+	bot, _ = tgbotapi.NewBotAPI(token)
+	fmt.Println("bot online")
+	u := tgbotapi.NewUpdate(0)
+	u.Timeout = 60
+	updates := bot.GetUpdatesChan(u)
 
 	for update := range updates {
 		if update.Message == nil {
@@ -137,11 +134,10 @@ func main() {
 
 			var carModelList []CarModel
 
-			if err := json.Unmarshal(body, &list); err != nil {
+			if err := json.Unmarshal(body, &carModelList); err != nil {
 				log.Fatalf("Error unmarshalling JSON: %v", err)
 			}
 
-			// Javobni chiqarish
 			//fmt.Println("Response Status:", resp.Status)
 			msg := ""
 
