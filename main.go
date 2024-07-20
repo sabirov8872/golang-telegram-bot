@@ -15,7 +15,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-type Welcome3 struct {
+type Welcome struct {
 	ModelID       string         `json:"model_id"`
 	Name          string         `json:"name"`
 	PhotoSHA      string         `json:"photo_sha"`
@@ -74,7 +74,7 @@ var db *sql.DB
 var bot *tgbotapi.BotAPI
 
 func isIdInTheTable(update tgbotapi.Update) bool {
-	// Ma'lumotlarni o'qib olish misoli
+	// Ma'lumotlarni o'qib olish
 	sqlSelect := `SELECT chat_id FROM users`
 	rows, err := db.Query(sqlSelect)
 	if err != nil {
@@ -129,7 +129,7 @@ func scheduleAtTwoPM() {
 	cnt := 0
 
 	for {
-		if time.Now().Hour() == 14 && time.Now().Minute() == 16 {
+		if time.Now().Hour() == 22 && time.Now().Minute() == 22 {
 			msgEveryDay := ""
 
 			if cnt == 0 {
@@ -156,7 +156,7 @@ func scheduleAtTwoPM() {
 			return
 		}
 
-		var welcome []Welcome3
+		var welcome []Welcome
 		if err = json.Unmarshal(body, &welcome); err != nil {
 			fmt.Println("Error:", err)
 			return
