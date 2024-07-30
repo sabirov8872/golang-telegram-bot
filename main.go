@@ -136,6 +136,7 @@ func scheduleAtTwoPM() {
 				msgEveryDay = "Сегодня не было новостей"
 			} else {
 				msgEveryDay = "Сегодня были новости"
+				cnt = 0
 			}
 
 			sendTimeMessage(msgEveryDay)
@@ -249,9 +250,9 @@ func main() {
 			}
 
 			sqlUpdate := `
-						UPDATE users
-						SET subscribe = $1
-						WHERE chat_id = $2`
+				UPDATE users
+				SET subscribe = $1
+				WHERE chat_id = $2`
 			res, _ := db.Exec(sqlUpdate, client.Subscribe, client.UserID)
 
 			_, err = res.RowsAffected()
