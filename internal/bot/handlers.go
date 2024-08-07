@@ -8,18 +8,28 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"telegram_bot/pkg/models"
 	"time"
 )
+
+type Model struct {
+	ModelID string `json:"model_id"`
+	Name    string `json:"name"`
+}
+
+type Client struct {
+	UserID    int64
+	FirstName string
+	Subscribe bool
+}
 
 func HandleMessage(update tgbotapi.Update, db *sql.DB, bot *tgbotapi.BotAPI) {
 	switch update.Message.Text {
 	case "/start":
 		if isIdInTheTable(update, db) {
 			sqlStatement := `
-						INSERT INTO users (chat_id, first_name, subscribe)
-						VALUES ($1, $2, $3)
-						RETURNING id`
+				INSERT INTO users (chat_id, first_name, subscribe)
+				VALUES ($1, $2, $3)
+				RETURNING id`
 			id := 0
 			err := db.QueryRow(sqlStatement, update.Message.Chat.ID, update.Message.From.FirstName, false).Scan(&id)
 			if err != nil {
@@ -44,7 +54,7 @@ func HandleCallback(update tgbotapi.Update, db *sql.DB, bot *tgbotapi.BotAPI) {
 		log.Panic(err)
 	}
 
-	client := models.Client{
+	client := Client{
 		UserID:    update.CallbackQuery.From.ID,
 		FirstName: update.CallbackQuery.From.FirstName,
 	}
@@ -56,9 +66,9 @@ func HandleCallback(update tgbotapi.Update, db *sql.DB, bot *tgbotapi.BotAPI) {
 	}
 
 	sqlUpdate := `
-				UPDATE users
-				SET subscribe = $1
-				WHERE chat_id = $2`
+		UPDATE users
+		SET subscribe = $1
+		WHERE chat_id = $2`
 	res, _ := db.Exec(sqlUpdate, client.Subscribe, client.UserID)
 
 	_, err := res.RowsAffected()
@@ -103,7 +113,7 @@ func sendTimeMessage(msg string, db *sql.DB, bot *tgbotapi.BotAPI) {
 	defer rows.Close()
 
 	for rows.Next() {
-		var client models.Client
+		var client Client
 		err = rows.Scan(&client.UserID, &client.Subscribe)
 		if err != nil {
 			log.Fatal(err)
@@ -128,7 +138,7 @@ func isIdInTheTable(update tgbotapi.Update, db *sql.DB) bool {
 	defer rows.Close()
 
 	for rows.Next() {
-		var client models.Client
+		var client Client
 		err = rows.Scan(&client.UserID)
 		if err != nil {
 			log.Fatal(err)
@@ -159,16 +169,16 @@ func getRequest(msg string, db *sql.DB, cnt *int, bot *tgbotapi.BotAPI) {
 		return
 	}
 
-	var welcome []models.Welcome
-	if err = json.Unmarshal(body, &welcome); err != nil {
+	var models []Model
+	if err = json.Unmarshal(body, &models); err != nil {
 		fmt.Println("Error:", err)
 		return
 	}
 
 	newMsg := ""
 
-	for _, w := range welcome {
-		newMsg += w.ModelID + " " + w.Name + "\n"
+	for _, model := range models {
+		newMsg += model.ModelID + " " + model.Name + "\n"
 	}
 
 	if msg == "" {
