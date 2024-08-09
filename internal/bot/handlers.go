@@ -16,7 +16,7 @@ type Model struct {
 	Name    string `json:"name"`
 }
 
-type Client struct {
+type User struct {
 	UserID    int64
 	FirstName string
 	Subscribe bool
@@ -54,22 +54,22 @@ func HandleCallback(update tgbotapi.Update, db *sql.DB, bot *tgbotapi.BotAPI) {
 		log.Panic(err)
 	}
 
-	client := Client{
+	user := User{
 		UserID:    update.CallbackQuery.From.ID,
 		FirstName: update.CallbackQuery.From.FirstName,
 	}
 
 	if update.CallbackQuery.Data == "Subscribe" {
-		client.Subscribe = true
+		user.Subscribe = true
 	} else {
-		client.Subscribe = false
+		user.Subscribe = false
 	}
 
 	sqlUpdate := `
 		UPDATE users
 		SET subscribe = $1
 		WHERE chat_id = $2`
-	res, _ := db.Exec(sqlUpdate, client.Subscribe, client.UserID)
+	res, _ := db.Exec(sqlUpdate, user.Subscribe, user.UserID)
 
 	_, err := res.RowsAffected()
 	if err != nil {
@@ -113,13 +113,13 @@ func sendTimeMessage(msg string, db *sql.DB, bot *tgbotapi.BotAPI) {
 	defer rows.Close()
 
 	for rows.Next() {
-		var client Client
-		err = rows.Scan(&client.UserID, &client.Subscribe)
+		var user User
+		err = rows.Scan(&user.UserID, &user.Subscribe)
 		if err != nil {
 			log.Fatal(err)
 		}
-		if client.Subscribe {
-			msgConfig := tgbotapi.NewMessage(client.UserID, msg)
+		if user.Subscribe {
+			msgConfig := tgbotapi.NewMessage(user.UserID, msg)
 			bot.Send(msgConfig)
 		}
 	}
@@ -138,12 +138,12 @@ func isIdInTheTable(update tgbotapi.Update, db *sql.DB) bool {
 	defer rows.Close()
 
 	for rows.Next() {
-		var client Client
-		err = rows.Scan(&client.UserID)
+		var user User
+		err = rows.Scan(&user.UserID)
 		if err != nil {
 			log.Fatal(err)
 		}
-		if client.UserID == update.Message.From.ID {
+		if user.UserID == update.Message.From.ID {
 			return false
 		}
 	}
